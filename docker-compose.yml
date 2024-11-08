@@ -1,0 +1,83 @@
+version: '3.8'
+services:
+  elk:
+    build: ./elk
+    ports:
+      - "5601:5601"   # Kibana
+      - "9200:9200"   # Elasticsearch
+      - "5044:5044"   # Logstash
+    environment:
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    networks:
+      - ecommerce
+
+  product:
+    build: ./services/product
+    ports:
+      - "5001:5001"
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://elk:5044"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/ecommerce
+    depends_on:
+      - mongodb
+    networks:
+      - ecommerce
+
+  order:
+    build: ./services/order
+    ports:
+      - "5002:5002"
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://elk:5044"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/ecommerce
+    depends_on:
+      - mongodb
+    networks:
+      - ecommerce
+
+  cart:
+    build: ./services/cart
+    ports:
+      - "5003:5003"
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://elk:5044"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/ecommerce
+    depends_on:
+      - mongodb
+    networks:
+      - ecommerce
+
+  auth:
+    build: ./services/auth
+    ports:
+      - "5004:5004"
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://elk:5044"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/ecommerce
+    depends_on:
+      - mongodb
+    networks:
+      - ecommerce
+      
+  mongodb:
+    image: mongo
+    ports:
+      - "27017:27017"
+    networks:
+      - ecommerce
+
+networks:
+  ecommerce:
+    driver: bridge
