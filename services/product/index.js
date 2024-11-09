@@ -1,34 +1,63 @@
 const express = require('express');
+const cors = require('cors');
 const mongoose = require('mongoose');
-const Product = require('./models/Product');
 const app = express();
 const PORT = 5001;
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+app.use(cors({ origin: '*' }));
+app.use(express.json());  // To parse JSON request bodies
 
-app.use(express.json());
-
-// SQL Injection vulnerability
-app.post('/product', (req, res) => {
-  const { id } = req.body;
-  const query = `SELECT * FROM products WHERE id = '${id}'`;
-  console.log(`Executing query: ${query}`);
-  res.send(`Executed query: ${query}`);
+// Define the Product schema directly in index.js
+const productSchema = new mongoose.Schema({
+  name: String,
+  description: String,
+  price: Number,
+  stock: Number
 });
 
-// XSS vulnerability
+// Create the Product model
+const Product = mongoose.model('Product', productSchema);
+
+// Connect to MongoDB
+mongoose.connect('mongodb://mongodb:27017/ecommerce', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(error => console.error('MongoDB connection error:', error));
+
+// SQL Injection simulation (replace with MongoDB query)
+app.post('/product', async (req, res) => {
+  const { id } = req.body;
+
+  // Fetch product by ID (safe query using MongoDB)
+  try {
+    const product = await Product.findById(id);
+    if (product) {
+      res.json(product);
+    } else {
+      res.status(404).send('Product not found');
+    }
+  } catch (error) {
+    res.status(500).send('Error fetching product');
+  }
+});
+
+// XSS vulnerability example
 app.get('/product/:id', (req, res) => {
   const productId = req.params.id;
+  // Directly injects user input, which can be exploited
   res.send(`<h1>Product Details for: ${productId}</h1>`);
 });
 
-// CORS Misconfiguration
-app.get('/all-products', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.json([{ id: 1, name: 'Product 1' }, { id: 2, name: 'Product 2' }]);
+// Correct way: Fetch all products safely
+app.get('/all-products', async (req, res) => {
+  try {
+    const products = await Product.find();  // Fetch all products from MongoDB
+    res.json(products);
+  } catch (error) {
+    res.status(500).send('Error fetching products');
+  }
 });
 
 app.listen(PORT, () => {

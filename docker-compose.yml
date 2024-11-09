@@ -1,76 +1,70 @@
 version: '3.8'
-services:
-  elk:
-    build: ./elk
-    ports:
-      - "5601:5601"   # Kibana
-      - "9200:9200"   # Elasticsearch
-      - "5044:5044"   # Logstash
-    environment:
-      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
-    networks:
-      - ecommerce
 
+services:
   product:
     build: ./services/product
     ports:
       - "5001:5001"
-    logging:
-      driver: gelf
-      options:
-        gelf-address: "udp://elk:5044"
+    volumes:
+      - logs:/app/logs  # Shared volume for centralized logs
     environment:
       - MONGO_URI=mongodb://mongodb:27017/ecommerce
+      - LOG_FILE_PATH=/app/logs/product.log
     depends_on:
       - mongodb
     networks:
       - ecommerce
+    restart: on-failure
+    command: sh -c "node index.js >> /app/logs/product.log 2>&1"  # Redirect stdout and stderr to log file
 
   order:
     build: ./services/order
     ports:
       - "5002:5002"
-    logging:
-      driver: gelf
-      options:
-        gelf-address: "udp://elk:5044"
+    volumes:
+      - logs:/app/logs
     environment:
       - MONGO_URI=mongodb://mongodb:27017/ecommerce
+      - LOG_FILE_PATH=/app/logs/order.log
     depends_on:
       - mongodb
     networks:
       - ecommerce
+    restart: on-failure
+    command: sh -c "node index.js >> /app/logs/order.log 2>&1"
 
   cart:
     build: ./services/cart
     ports:
       - "5003:5003"
-    logging:
-      driver: gelf
-      options:
-        gelf-address: "udp://elk:5044"
+    volumes:
+      - logs:/app/logs
     environment:
       - MONGO_URI=mongodb://mongodb:27017/ecommerce
+      - LOG_FILE_PATH=/app/logs/cart.log
     depends_on:
       - mongodb
     networks:
       - ecommerce
+    restart: on-failure
+    command: sh -c "node index.js >> /app/logs/cart.log 2>&1"
 
   auth:
     build: ./services/auth
     ports:
       - "5004:5004"
-    logging:
-      driver: gelf
-      options:
-        gelf-address: "udp://elk:5044"
+    volumes:
+      - logs:/app/logs
     environment:
       - MONGO_URI=mongodb://mongodb:27017/ecommerce
+      - LOG_FILE_PATH=/app/logs/auth.log
     depends_on:
       - mongodb
     networks:
       - ecommerce
-      
+    restart: on-failure
+    command: sh -c "node index.js >> /app/logs/auth.log 2>&1"
+
   mongodb:
     image: mongo
     ports:
@@ -81,3 +75,18 @@ services:
 networks:
   ecommerce:
     driver: bridge
+
+volumes:
+  # Mount both service logs and host logs in a centralized location
+  logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "C:/Users/Omar Bin Tarique/Downloads/MP3_LOGS/ecommerce-vulnerable-app/logs"  # Path on host for all logs
+  host-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/log  # Access host system logs for Docker and network logging

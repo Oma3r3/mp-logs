@@ -1,13 +1,17 @@
 const express = require('express');
+const cors = require('cors'); 
 const app = express();
 const PORT = 5002;
 
+
 app.use(express.json());
+app.use(cors({ origin: '*' }));  
 
 // Vulnerable CSRF Endpoint (No CSRF Token)
 app.post('/order', (req, res) => {
     res.send('Order placed without CSRF protection');
 });
+
 
 // Clickjacking Vulnerability
 app.get('/checkout', (req, res) => {

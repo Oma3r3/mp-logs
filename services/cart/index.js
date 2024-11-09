@@ -1,9 +1,13 @@
 const express = require('express');
 const app = express();
 const PORT = 5003;
+const cors = require('cors'); 
+
+
 
 app.use(express.json());
-
+app.use(cors({ origin: '*' })); 
+ 
 // Business Logic Flaw (Allowing large quantities)
 app.post('/add', (req, res) => {
     const { quantity } = req.body;
